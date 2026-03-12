@@ -34,7 +34,39 @@ def init_db():
         c.execute("ALTER TABLE queue ADD COLUMN user_id INTEGER")
     except sqlite3.OperationalError:
         pass
+    
+    c.execute('''CREATE TABLE IF NOT EXISTS drafts
+                 (user_id INTEGER PRIMARY KEY,
+                  photo_id TEXT,
+                  text TEXT,
+                  document_id TEXT,
+                  channel_id TEXT)''')
         
+    conn.commit()
+    conn.close()
+
+def save_user_draft(user_id, photo, text, document, channel):
+    conn = sqlite3.connect('bot_data.db')
+    c = conn.cursor()
+    c.execute("INSERT OR REPLACE INTO drafts (user_id, photo_id, text, document_id, channel_id) VALUES (?, ?, ?, ?, ?)",
+              (user_id, photo, text, document, channel))
+    conn.commit()
+    conn.close()
+
+def get_user_draft(user_id):
+    conn = sqlite3.connect('bot_data.db')
+    c = conn.cursor()
+    c.execute("SELECT photo_id, text, document_id, channel_id FROM drafts WHERE user_id = ?", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return {'photo': row[0], 'text': row[1], 'document': row[2], 'channel': row[3]}
+    return None
+
+def delete_user_draft(user_id):
+    conn = sqlite3.connect('bot_data.db')
+    c = conn.cursor()
+    c.execute("DELETE FROM drafts WHERE user_id = ?", (user_id,))
     conn.commit()
     conn.close()
 

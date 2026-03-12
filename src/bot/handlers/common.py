@@ -14,19 +14,20 @@ def register_handlers(bot: telebot.TeleBot):
     # Usually, it's better to import them from user.py or have a shared state module.
     from src.bot.handlers.user import user_drafts, user_personas, show_queue_page, show_watermark_menu, send_draft_preview, get_active_channel
 
-    @bot.message_handler(commands=['start'])
+    @bot.message_handler(commands=['start', 'restart'])
     def send_welcome(message):
         user_id = message.from_user.id
         user = database.get_user(user_id)
         
         if not user:
-            msg = bot.send_message(message.chat.id, "👋 Привет! Добро пожаловать.\n\nВведи никнейм для регистрации:")
-            bot.register_next_step_handler(msg, process_registration_step, bot)
-            return
+            # Создаем временного пользователя без никнейма и канала
+            database.add_user(user_id, message.from_user.first_name or "User")
+            user = database.get_user(user_id)
 
         ensure_user_dir(user_id)
         greeting = helpers.get_time_greeting()
-        bot.send_message(message.chat.id, f"{greeting}, {user[1]}!", reply_markup=keyboards.get_main_menu(user_id))
+        text = f"{greeting}, {user[1]}!\n\nЭто бот для автопостинга Minecraft модов. Нажми '📝 Создать пост', чтобы начать."
+        bot.send_message(message.chat.id, text, reply_markup=keyboards.get_main_menu(user_id))
 
     @bot.message_handler(func=lambda m: m.text == "💰 Тарифы")
     def show_tariffs(message):
@@ -47,6 +48,14 @@ def register_handlers(bot: telebot.TeleBot):
         chat_id = call.message.chat.id
         user_id = call.from_user.id
         target_id = call.message.message_id
+
+        # Проверка регистрации перед важными действиями
+        user = database.get_user(user_id)
+        if (call.data == "add_to_smart_q" or call.data == "pub_now") and (not user or not user[2]):
+            msg = bot.send_message(chat_id, "⚠️ Для публикации нужно привязать канал.\n\nПришли @username твоего канала:")
+            bot.register_next_step_handler(msg, process_channel_setup_step, bot)
+            bot.answer_callback_query(call.id)
+            return
 
         if call.data == "reset_watermark":
             database.update_user_logo(user_id, None)
@@ -75,7 +84,12 @@ def register_handlers(bot: telebot.TeleBot):
 
         draft = user_drafts.get(target_id)
         if not draft and not (call.data.startswith("sched_")):
-            return bot.answer_callback_query(call.id, "Черновик устарел.", show_alert=True)
+            # Попробуем восстановить черновик из базы данных по user_id
+            draft = database.get_user_draft(user_id)
+            if not draft:
+                return bot.answer_callback_query(call.id, "Черновик устарел или не найден.", show_alert=True)
+            # Восстанавливаем в память
+            user_drafts[target_id] = draft
 
         if call.data == "add_to_smart_q":
             last_time = database.get_last_scheduled_time()

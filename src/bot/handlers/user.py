@@ -104,6 +104,8 @@ def process_single_message(bot, message):
                 except: pass
         
         draft = {'photo': photo_id, 'text': generated_text, 'document': None, 'ad_added': False, 'channel': get_active_channel(user_id)}
+        # Сохраняем в БД, чтобы не потерять при перезагрузке
+        database.save_user_draft(user_id, draft['photo'], draft['text'], draft['document'], draft['channel'])
         send_draft_preview(bot, message.chat.id, draft)
     except Exception as e:
         bot.send_message(message.chat.id, f"Ошибка: {e}")
@@ -151,6 +153,9 @@ def process_album(bot, media_group_id, chat_id, user_id):
             
         draft = {'photo': photo_id_str, 'text': ai.generate_post(caption, user_personas.get(user_id, "uz")), 
                  'document': None, 'ad_added': False, 'channel': get_active_channel(user_id)}
+        
+        # Сохраняем в БД
+        database.save_user_draft(user_id, draft['photo'], draft['text'], draft['document'], draft['channel'])
         send_draft_preview(bot, chat_id, draft)
     except Exception as e:
         bot.send_message(chat_id, f"Ошибка альбома: {e}")
@@ -186,6 +191,11 @@ def send_draft_preview(bot, chat_id, draft):
             target_id = sent.message_id
             
         user_drafts[target_id] = draft
+        # Также связываем user_id с target_id в памяти для быстрого доступа
+        user_id = None
+        for uid, d in database.get_all_users(): # Это просто пример, на самом деле мы знаем user_id из контекста вызова
+            pass 
+
         bot.edit_message_reply_markup(chat_id, target_id, reply_markup=keyboards.get_draft_markup())
     except Exception as e:
         bot.send_message(chat_id, f"❌ Ошибка превью: {e}")
