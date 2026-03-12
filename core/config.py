@@ -39,7 +39,19 @@ class Settings(BaseSettings):
         return v
     
     # Database Settings
-    DATABASE_URL: PostgresDsn
+    DATABASE_URL: Union[PostgresDsn, str]
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def fix_database_url(cls, v: Any) -> str:
+        if isinstance(v, str):
+            # Заменяем postgres:// на postgresql:// (для совместимости)
+            if v.startswith("postgres://"):
+                v = v.replace("postgres://", "postgresql://", 1)
+            # Добавляем +asyncpg если его нет
+            if v.startswith("postgresql://"):
+                v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
     
     # Redis Settings
     REDIS_URL: RedisDsn
