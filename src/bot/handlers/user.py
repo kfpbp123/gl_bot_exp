@@ -31,6 +31,27 @@ def register_user_handlers(bot: telebot.TeleBot):
     def queue_status(message):
         show_queue_page(bot, message.chat.id, 0)
 
+    @bot.message_handler(func=lambda m: m.text == "🎭 Выбор стиля")
+    def style_menu(message):
+        markup = telebot.types.InlineKeyboardMarkup()
+        markup.add(
+            telebot.types.InlineKeyboardButton("🇺🇿 O'zbekcha", callback_data="set_persona_uz"),
+            telebot.types.InlineKeyboardButton("🇷🇺 Русский", callback_data="set_persona_ru")
+        )
+        markup.add(telebot.types.InlineKeyboardButton("🇬🇧 English", callback_data="set_persona_en"))
+        
+        current = user_personas.get(message.from_user.id, "uz")
+        bot.send_message(message.chat.id, f"🎭 <b>Выбор стиля (языка)</b>\n\nТекущий: <code>{current}</code>\nВыберите язык, на котором AI будет писать посты:", parse_mode='HTML', reply_markup=markup)
+
+    @bot.message_handler(func=lambda m: m.text == "📢 Выбор канала")
+    def channel_menu(message):
+        user = database.get_user(message.from_user.id)
+        current = user[2] if user and user[2] else "Не привязан"
+        text = f"📢 <b>Привязка канала</b>\n\nТекущий канал: <code>{current}</code>\n\nПришли @username нового канала или нажми '❌ Отмена':"
+        msg = bot.send_message(message.chat.id, text, parse_mode='HTML', reply_markup=keyboards.get_cancel_markup())
+        from src.bot.handlers.common import process_channel_setup_step
+        bot.register_next_step_handler(msg, process_channel_setup_step, bot)
+
     @bot.message_handler(func=lambda m: m.text == "🏠 Главное меню")
     def back_to_main(message):
         bot.send_message(message.chat.id, "🏠 Главное меню", reply_markup=keyboards.get_main_menu(message.from_user.id))
@@ -225,8 +246,15 @@ def show_watermark_menu(bot, chat_id, user_id):
 
 def process_watermark_step(message, bot):
     user_id = message.from_user.id
-    if message.text in ["❌ Отмена", "🏠 Главное меню"]:
-        bot.send_message(message.chat.id, "🏠 Главное меню", reply_markup=keyboards.get_main_menu(user_id))
+    
+    # Список текстов кнопок главного меню
+    menu_buttons = ["📝 Создать пост", "🎭 Выбор стиля", "📢 Выбор канала", "🖼️ Мой вотермарк", "📈 Моя статистика", "📊 Статус очереди", "💰 Тарифы", "🛡️ Админ-панель", "🏠 Главное меню", "❌ Отмена"]
+
+    if message.text in menu_buttons:
+        if message.text in ["❌ Отмена", "🏠 Главное меню"]:
+            bot.send_message(message.chat.id, "🏠 Главное меню", reply_markup=keyboards.get_main_menu(user_id))
+        else:
+            bot.send_message(message.chat.id, "Ок. Нажми кнопку еще раз для перехода.")
         return
 
     if not message.document:

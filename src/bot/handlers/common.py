@@ -134,6 +134,13 @@ def register_handlers(bot: telebot.TeleBot):
             bot.answer_callback_query(call.id, "Удалено")
             return
 
+        if call.data.startswith("set_persona_"):
+            persona = call.data.split("_")[2]
+            user_personas[user_id] = persona
+            bot.answer_callback_query(call.id, f"✅ Стиль изменен на {persona}")
+            bot.edit_message_text(f"✅ Стиль успешно изменен на: <b>{persona}</b>", chat_id, target_id, parse_mode='HTML')
+            return
+
 def ensure_user_dir(user_id):
     path = os.path.join(config.USER_DATA_DIR, str(user_id))
     if not os.path.exists(path):
