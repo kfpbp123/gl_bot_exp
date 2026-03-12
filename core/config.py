@@ -1,7 +1,12 @@
 # core/config.py
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import SecretStr, PostgresDsn, RedisDsn
 from typing import List
+from pathlib import Path
+
+# Определяем путь к .env относительно этого файла
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 class Settings(BaseSettings):
     # Bot Settings
@@ -9,11 +14,9 @@ class Settings(BaseSettings):
     ADMIN_IDS: List[int] = []
     
     # Database Settings
-    # postgresql+asyncpg://user:pass@localhost:5432/dbname
     DATABASE_URL: PostgresDsn
     
     # Redis Settings
-    # redis://localhost:6379/0
     REDIS_URL: RedisDsn
     
     # AI Settings
@@ -23,10 +26,9 @@ class Settings(BaseSettings):
     WATERMARK_PATH: str = "assets/watermark.png"
     
     model_config = SettingsConfigDict(
-        env_file=".env", 
+        env_file=BASE_DIR / ".env", 
         env_file_encoding="utf-8",
-        extra="ignore",
-        env_nested_delimiter="__"
+        extra="ignore"
     )
 
 settings = Settings()
