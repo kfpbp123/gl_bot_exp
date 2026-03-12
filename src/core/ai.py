@@ -7,34 +7,53 @@ from bs4 import BeautifulSoup
 client = genai.Client(api_key=config.GEMINI_KEY)
 MODEL_ID = "gemini-2.5-flash"
 
-PROMPTS = {
-    "uz": """Ты — креативный редактор Telegram-канала о модах для Minecraft.
-Я передам тебе текст. Вычлени главное и напиши пост. Уложись в 800 символов.
-Пиши ТОЛЬКО на узбекском латинице. Если не смог найти версию напиши "1.21+".
-Используй тег <blockquote expandable> для основного блока. Перепиши текст в более веселом, драйвовом и геймерском стиле. Добавь чуть больше эмодзи.
+PERSONAS = {
+    "uz": {
+        "gamer": "Geymer uslubi: drive, emojilar ko'p, 'imba', 'top' kabi so'zlar bilan.",
+        "scientist": "Aqlli olim: Minecraft mexanikasini chuqur tushuntiradi, faktlar bilan.",
+        "crazy": "Jinni professor: g'ayratli, biroz g'alati, hayqiriqlar bilan!",
+        "minimalist": "Minimalist: faqat eng muhim narsa, qisqa va lo'nda.",
+        "storyteller": "Hikoyachi: mod haqida kichik sarguzasht kabi yozadi.",
+        "critic": "Qattiqqo'l tanqidchi: modning ham plyus, ham minuslarini topadi.",
+        "cheerleader": "Pozitiv: juda quvnoq, hammani modni yuklab olishga chorlaydi.",
+        "mystery": "Sirli: mod sirlari haqida qiziqtirib yozadi.",
+        "helper": "Yordamchi: survival rejimida bu mod qanday yordam berishiga e'tibor qaratadi.",
+        "architect": "Arxitektor: dekorativ modlar uchun ideal, go'zallik haqida.",
+        "classic": "Klassik: oddiy va tushunarli reklama uslubi.",
+        "news": "Yangiliklar: jurnalistik uslub, rasmiy va aniq.",
+        "friend": "Yaqin do'st: xuddi do'stiga maslahat bergandek samimiy.",
+        "villager": "Qishloqi: biroz kulgili, Minecraft dunyosidan kelib chiqib.",
+        "og": "OG Gamer: eski Minecraft versiyalarini eslab, nostalgiya bilan."
+    }
+    # Аналогично для RU и EN
+}
 
-Формат:
-📦 <b>[Название]</b>
+PROMPTS = {
+    "uz": """Sen Minecraft modlari uchun kreativ Telegram redaktorisang.
+Senga matn beraman, sen esa uni [STYLE] uslubida yozib ber. 800 belgidan oshmasin.
+Faqat O'zbek tilida (lotin) yoz.
+
+Uslub: [STYLE_DESC]
+
+Format:
+📦 <b>[Nomi]</b>
 
 <blockquote expandable><b>Bu nima?</b>
-[Описание]
+[Tavsif]
 
 <b>Asosiy xususiyatlar:</b>
-• [Фишка 1]
-• [Фишка 2]
+• [Fakt 1]
+• [Fakt 2]
 
-🎮 Versiya: [Версия]</blockquote>
+🎮 Versiya: [Versiya]</blockquote>
 
 <blockquote>💖 - zo`r
 💔 - Unchamas</blockquote>
 
-#Minecraft #[Категория]
-
-ПРАВИЛА ДЛЯ ХЭШТЕГОВ (КРИТИЧЕСКИ ВАЖНО):
-1. Внимательно проанализируй, о чем пост. Выбери строго ОДНУ категорию и напиши её хэштег: #Mods, #Maps, #Textures или #Shaders.
-2. В конце поста должно быть ровно ДВА хэштега: #Minecraft и хэштег выбранной категории.
-3. КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО писать название мода в виде хэштега! Не придумывай свои слова для хэштегов!
+#Minecraft #[Kategoriya]
 """,
+    # RU и EN промпты...
+}
 
     "ru": """Ты — креативный редактор Telegram-канала о модах для Minecraft.
 Я передам тебе текст. Вычлени главное и напиши пост в драйвовом и веселом стиле. Уложись в 800 символов.

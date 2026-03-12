@@ -17,7 +17,14 @@ def init_db():
                   username TEXT,
                   target_channel TEXT,
                   custom_logo TEXT,
-                  registration_date INTEGER)''')
+                  registration_date INTEGER,
+                  language TEXT DEFAULT 'uz')''')
+    
+    # Безопасно добавляем колонку, если её нет
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'uz'")
+    except sqlite3.OperationalError:
+        pass
     
     # Безопасно добавляем новые колонки, если их нет
     try:
@@ -85,6 +92,13 @@ def update_user_channel(user_id, channel):
     conn = sqlite3.connect('bot_data.db')
     c = conn.cursor()
     c.execute("UPDATE users SET target_channel = ? WHERE user_id = ?", (channel, user_id))
+    conn.commit()
+    conn.close()
+
+def update_user_language(user_id, lang):
+    conn = sqlite3.connect('bot_data.db')
+    c = conn.cursor()
+    c.execute("UPDATE users SET language = ? WHERE user_id = ?", (lang, user_id))
     conn.commit()
     conn.close()
 

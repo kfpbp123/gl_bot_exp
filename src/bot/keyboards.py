@@ -1,28 +1,32 @@
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
 import config
+from src.utils.localizer import t
 
-def get_main_menu(user_id):
+def get_main_menu(user_id, lang='uz'):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add(KeyboardButton("📝 Создать пост"))
-    markup.add(KeyboardButton("🎭 Выбор стиля"), KeyboardButton("📢 Выбор канала"))
-    markup.add(KeyboardButton("🖼️ Мой вотермарк"), KeyboardButton("📈 Моя статистика"))
-    markup.add(KeyboardButton("📊 Статус очереди"), KeyboardButton("💰 Тарифы"))
+    markup.add(KeyboardButton(t('btn_create', lang)))
+    markup.add(KeyboardButton(t('btn_style', lang)), KeyboardButton(t('btn_channel', lang)))
+    markup.add(KeyboardButton(t('btn_watermark', lang)), KeyboardButton(t('btn_stats', lang)))
+    markup.add(KeyboardButton(t('btn_queue', lang)), KeyboardButton(t('btn_tariffs', lang)))
+    
+    # Кнопка Web App (Telegram Web App)
+    markup.add(KeyboardButton(t('btn_webapp', lang), web_app=WebAppInfo(url="https://google.com"))) 
     
     if user_id in config.ADMIN_IDS:
-        markup.add(KeyboardButton("🛡️ Админ-панель"))
+        markup.add(KeyboardButton(t('btn_admin', lang)))
     return markup
 
-def get_admin_menu():
+def get_admin_menu(lang='uz'):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(KeyboardButton("👥 Список пользователей"), KeyboardButton("📈 Общая статистика"))
     markup.add(KeyboardButton("➕ Добавить канал"), KeyboardButton("💰 Реклама"))
     markup.add(KeyboardButton("💾 Бэкап базы"), KeyboardButton("💡 Запросы подписчиков"))
-    markup.add(KeyboardButton("🏠 Главное меню"))
+    markup.add(KeyboardButton(t('btn_home', lang)))
     return markup
 
-def get_cancel_markup():
+def get_cancel_markup(lang='uz'):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-    markup.add(KeyboardButton("❌ Отмена"))
+    markup.add(KeyboardButton(t('btn_cancel', lang)))
     return markup
 
 def get_draft_markup():
