@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     WATERMARK_PATH: str = "assets/watermark.png"
     
     model_config = SettingsConfigDict(
-        env_file=BASE_DIR / ".env", 
+        env_file=BASE_DIR / ".env" if (BASE_DIR / ".env").exists() else None,
         env_file_encoding="utf-8",
         extra="ignore"
     )
