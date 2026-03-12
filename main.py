@@ -1,39 +1,44 @@
-import telebot
-import time
-import config
-from src.core import database
-from src.bot import scheduler
-from src.bot.handlers import common, user, admin
+# main.py
+import asyncio
+from aiogram import Bot, Dispatcher
+from aiogram.fsm.storage.redis import RedisStorage, Redis
+from core.config import settings
+from core.logging import setup_logging, logger
+from bot.middlewares.db import DbSessionMiddleware
+from database.session import async_session
+from bot.handlers import common, posts
 
-# Инициализация БД
-database.init_db()
+async def main():
+    # 1. Настройка логирования
+    setup_logging()
+    
+    # 2. Инициализация Redis (используется для FSM)
+    # redis://localhost:6379/0
+    redis = Redis.from_url(str(settings.REDIS_URL))
+    storage = RedisStorage(redis)
 
-# Инициализация Бота
-bot = telebot.TeleBot(config.TELEGRAM_TOKEN)
+    # 3. Настройка бота и диспетчера
+    bot = Bot(token=settings.BOT_TOKEN.get_secret_value())
+    dp = Dispatcher(storage=storage)
 
-# Регистрация обработчиков
-common.register_handlers(bot)
-user.register_user_handlers(bot)
-admin.register_admin_handlers(bot)
+    # 4. Регистрация мидлварей (авто-БД)
+    dp.update.middleware(DbSessionMiddleware(async_session))
 
-# Запуск планировщика
-scheduler.init_scheduler(bot)
+    # 5. Регистрация хэндлеров
+    dp.include_router(common.router)
+    dp.include_router(posts.router)
+
+    # 6. Запуск бота
+    me = await bot.get_me()
+    logger.info("bot_started", username=me.username)
+    
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await bot.session.close()
 
 if __name__ == "__main__":
-    print("🤖 Бот Minecraft Poster (Restructured) запущен!")
-    
-    # Удаляем вебхук перед запуском polling, чтобы избежать ошибки 409 Conflict
-    bot.remove_webhook()
-    time.sleep(1)
-    
-    while True:
-        try:
-            # Используем меньший таймаут для polling и увеличиваем long_polling_timeout
-            bot.polling(none_stop=True, timeout=20, long_polling_timeout=20)
-        except Exception as e:
-            if "Read timed out" in str(e):
-                # Это нормальная ошибка при долгом ожидании, просто перезапускаем
-                time.sleep(1)
-                continue
-            print(f"❌ Ошибка Polling: {e}")
-            time.sleep(5)
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("bot_stopped")
