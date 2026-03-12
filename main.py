@@ -21,6 +21,11 @@ scheduler.init_scheduler(bot)
 
 if __name__ == "__main__":
     print("🤖 Бот Minecraft Poster (Restructured) запущен!")
+    
+    # Удаляем вебхук перед запуском polling, чтобы избежать ошибки 409 Conflict
+    bot.remove_webhook()
+    time.sleep(1)
+    
     while True:
         try:
             # Используем меньший таймаут для polling и увеличиваем long_polling_timeout
