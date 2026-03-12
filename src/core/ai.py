@@ -17,7 +17,7 @@ PERSONAS = {
         "critic": "Qattiqqo'l tanqidchi: modning ham plyus, ham minuslarini topadi.",
         "cheerleader": "Pozitiv: juda quvnoq, hammani modni yuklab olishga chorlaydi.",
         "mystery": "Sirli: mod sirlari haqida qiziqtirib yozadi.",
-        "helper": "Yordamchi: survival rejimida bu mod qanday yordam berishiga e'tibor qратadi.",
+        "helper": "Yordamchi: survival rejimida bu mod qanday yordam berishiga e'tibor qaratadi.",
         "architect": "Arxitektor: dekorativ modlar uchun ideal, go'zallik haqida.",
         "classic": "Klassik: oddiy va tushunarli reklama uslubi.",
         "news": "Yangiliklar: jurnalistik uslub, rasmiy va aniq.",
