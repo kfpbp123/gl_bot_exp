@@ -5,7 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 
 client = genai.Client(api_key=config.GEMINI_KEY)
-MODEL_ID = "gemini-2.5-flash"
+MODEL_ID = "gemini-2.0-flash"
 
 PERSONAS = {
     "uz": {
@@ -17,15 +17,48 @@ PERSONAS = {
         "critic": "Qattiqqo'l tanqidchi: modning ham plyus, ham minuslarini topadi.",
         "cheerleader": "Pozitiv: juda quvnoq, hammani modni yuklab olishga chorlaydi.",
         "mystery": "Sirli: mod sirlari haqida qiziqtirib yozadi.",
-        "helper": "Yordamchi: survival rejimida bu mod qanday yordam berishiga e'tibor qaratadi.",
+        "helper": "Yordamchi: survival rejimida bu mod qanday yordam berishiga e'tibor qратadi.",
         "architect": "Arxitektor: dekorativ modlar uchun ideal, go'zallik haqida.",
         "classic": "Klassik: oddiy va tushunarli reklama uslubi.",
         "news": "Yangiliklar: jurnalistik uslub, rasmiy va aniq.",
         "friend": "Yaqin do'st: xuddi do'stiga maslahat bergandek samimiy.",
         "villager": "Qishloqi: biroz kulgili, Minecraft dunyosidan kelib chiqib.",
         "og": "OG Gamer: eski Minecraft versiyalarini eslab, nostalgiya bilan."
+    },
+    "ru": {
+        "gamer": "Геймерский стиль: драйв, много эмодзи, сленг типа 'имба', 'топ'.",
+        "scientist": "Умный ученый: глубоко объясняет механику Minecraft с фактами.",
+        "crazy": "Безумный профессор: энергичный, странный, с восклицаниями!",
+        "minimalist": "Минималист: только суть, кратко и лаконично.",
+        "storyteller": "Рассказчик: пишет о моде как о маленьком приключении.",
+        "critic": "Строгий критик: находит и плюсы, и минусы мода.",
+        "cheerleader": "Позитив: очень весело, призывает всех скачать мод.",
+        "mystery": "Таинственный: интригует секретами мода.",
+        "helper": "Помощник: фокус на том, как мод поможет в выживании.",
+        "architect": "Архитектор: идеально для декоративных модов, про красоту.",
+        "classic": "Классик: простой и понятный рекламный стиль.",
+        "news": "Новости: журналистский стиль, официально и четко.",
+        "friend": "Близкий друг: искренне, как будто советует другу.",
+        "villager": "Житель: немного смешно, в стиле мира Minecraft.",
+        "og": "OG Геймер: с ностальгией по старым версиям Minecraft."
+    },
+    "en": {
+        "gamer": "Gamer style: drive, lots of emojis, slang like 'imba', 'top'.",
+        "scientist": "Smart scientist: explains Minecraft mechanics in depth with facts.",
+        "crazy": "Mad professor: energetic, a bit weird, with exclamations!",
+        "minimalist": "Minimalist: only the core, short and concise.",
+        "storyteller": "Storyteller: writes about the mod like a small adventure.",
+        "critic": "Strict critic: finds both pros and cons of the mod.",
+        "cheerleader": "Positive: very cheerful, encourages everyone to download.",
+        "mystery": "Mysterious: intrigues with mod secrets.",
+        "helper": "Helper: focus on how the mod helps in survival.",
+        "architect": "Architect: perfect for decorative mods, about beauty.",
+        "classic": "Classic: simple and clear advertising style.",
+        "news": "News: journalistic style, official and clear.",
+        "friend": "Close friend: sincere, as if advising a friend.",
+        "villager": "Villager: a bit funny, Minecraft world style.",
+        "og": "OG Gamer: with nostalgia for old Minecraft versions."
     }
-    # Аналогично для RU и EN
 }
 
 PROMPTS = {
@@ -52,13 +85,11 @@ Format:
 
 #Minecraft #[Kategoriya]
 """,
-    # RU и EN промпты...
-}
-
     "ru": """Ты — креативный редактор Telegram-канала о модах для Minecraft.
-Я передам тебе текст. Вычлени главное и напиши пост в драйвовом и веселом стиле. Уложись в 800 символов.
+Я передам тебе текст, а ты напиши пост в стиле [STYLE]. Уложись в 800 символов.
 Пиши ТОЛЬКО на русском языке.
-Используй тег <blockquote expandable> для основного блока.
+
+Стиль: [STYLE_DESC]
 
 Формат:
 📦 <b>[Название]</b>
@@ -76,17 +107,12 @@ Format:
 💔 - Не оч</blockquote>
 
 #Minecraft #[Категория]
-
-ПРАВИЛА ДЛЯ ХЭШТЕГОВ (КРИТИЧЕСКИ ВАЖНО):
-1. Внимательно проанализируй, о чем пост. Выбери строго ОДНУ категорию и напиши её хэштег на русском: #Моды, #Карты, #Текстуры или #Шейдеры.
-2. В конце поста должно быть ровно ДВА хэштега: #Minecraft и хэштег выбранной категории.
-3. КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО писать название мода в виде хэштега! Не придумывай свои слова для хэштегов!
 """,
-
     "en": """You are a creative editor for a Minecraft mods Telegram channel.
-Extract the main points and write an engaging post. Keep it under 800 characters.
-Write ONLY in English in an exciting tone.
-Use the <blockquote expandable> tag for the main body.
+I will give you text, and you write a post in [STYLE] style. Keep it under 800 characters.
+Write ONLY in English.
+
+Style: [STYLE_DESC]
 
 Format:
 📦 <b>[Mod Name]</b>
@@ -104,11 +130,6 @@ Format:
 💔 - Not great</blockquote>
 
 #Minecraft #[Category]
-
-HASHTAG RULES (CRITICAL):
-1. Analyze the content and choose exactly ONE category hashtag from this list: #Mods, #Maps, #Textures, or #Shaders.
-2. The post must end with exactly two hashtags: #Minecraft and the chosen category hashtag.
-3. NEVER use the mod's name as a hashtag! Do not invent your own hashtags!
 """
 }
 
@@ -127,7 +148,7 @@ def fetch_page_content(url):
         print(f"⚠️ Не смог прочитать сайт {url}: {e}")
         return ""
 
-def generate_post(user_input, persona="uz"):
+def generate_post(user_input, persona="gamer", lang="uz"):
     url = extract_url(user_input)
     site_context = ""
     
@@ -135,18 +156,19 @@ def generate_post(user_input, persona="uz"):
         page_text = fetch_page_content(url)
         site_context = f"\n\nИнформация с сайта:\n{page_text}"
 
-    selected_prompt = PROMPTS.get(persona, PROMPTS["uz"])
+    selected_prompt = PROMPTS.get(lang, PROMPTS["uz"])
+    persona_info = PERSONAS.get(lang, PERSONAS["uz"]).get(persona, PERSONAS["uz"]["gamer"])
     
-    prompt = f"{selected_prompt}\n\nСырая информация от пользователя:\n{user_input}{site_context}"
-    response = client.models.generate_content(model=MODEL_ID, contents=prompt)
+    final_prompt = selected_prompt.replace("[STYLE]", persona).replace("[STYLE_DESC]", persona_info)
+    final_prompt += f"\n\nСырая информация от пользователя:\n{user_input}{site_context}"
+    
+    response = client.models.generate_content(model=MODEL_ID, contents=final_prompt)
     
     final_text = response.text.strip()
-    # Конвертируем Markdown-звездочки в HTML-теги для жирного текста
     final_text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', final_text)
-    
     return final_text
 
-def rewrite_post(text, style="short"):
+def rewrite_post(text, style="fun"):
     styles = {
         "short": "Сделай текст короче и лаконичнее. Оставь только самую суть, убери лишнюю воду.",
         "fun": "Перепиши текст в более веселом, драйвовом и геймерском стиле. Добавь чуть больше эмодзи.",

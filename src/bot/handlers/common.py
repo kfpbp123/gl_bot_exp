@@ -124,6 +124,15 @@ def register_handlers(bot: telebot.TeleBot):
             user_drafts.pop(target_id, None)
             return
 
+        if call.data.startswith("pers_page_"):
+            page = int(call.data.split("_")[2])
+            from src.bot.handlers.user import show_style_menu
+            # Note: We need to use edit_message instead of send_message inside show_style_menu for better UX, 
+            # but for now let's just call it.
+            bot.delete_message(chat_id, target_id)
+            show_style_menu(bot, chat_id, user_id, page=page)
+            return
+
         if call.data.startswith("set_persona_"):
             persona = call.data.split("_")[2]
             user_personas[user_id] = persona
