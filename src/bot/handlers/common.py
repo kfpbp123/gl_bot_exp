@@ -28,6 +28,20 @@ def register_handlers(bot: telebot.TeleBot):
         greeting = helpers.get_time_greeting()
         bot.send_message(message.chat.id, f"{greeting}, {user[1]}!", reply_markup=keyboards.get_main_menu(user_id))
 
+    @bot.message_handler(func=lambda m: m.text == "💰 Тарифы")
+    def show_tariffs(message):
+        text = (
+            "💰 <b>ТАРИФЫ И ПОДПИСКА</b>\n\n"
+            "Выберите подходящий план для автоматизации вашего канала:\n\n"
+            "🔹 <b>FREE</b> — 3 поста в день, вотермарк.\n"
+            "🔸 <b>PREMIUM</b> — Безлимит, умная очередь, AI-генерация, приоритет.\n"
+            "🚀 <b>ULTRA</b> — Управление несколькими каналами + Рекламный модуль.\n\n"
+            "<i>Для покупки свяжитесь с администратором.</i>"
+        )
+        markup = telebot.types.InlineKeyboardMarkup()
+        markup.add(telebot.types.InlineKeyboardButton("💳 Купить", url=f"tg://user?id={config.ADMIN_IDS[0]}"))
+        bot.send_message(message.chat.id, text, parse_mode='HTML', reply_markup=markup)
+
     @bot.callback_query_handler(func=lambda call: True)
     def callback_inline(call):
         chat_id = call.message.chat.id

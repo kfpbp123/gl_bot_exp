@@ -6,7 +6,7 @@ def get_main_menu(user_id):
     markup.add(KeyboardButton("📝 Создать пост"))
     markup.add(KeyboardButton("🎭 Выбор стиля"), KeyboardButton("📢 Выбор канала"))
     markup.add(KeyboardButton("🖼️ Мой вотермарк"), KeyboardButton("📈 Моя статистика"))
-    markup.add(KeyboardButton("📊 Статус очереди"))
+    markup.add(KeyboardButton("📊 Статус очереди"), KeyboardButton("💰 Тарифы"))
     
     if user_id in config.ADMIN_IDS:
         markup.add(KeyboardButton("🛡️ Админ-панель"))

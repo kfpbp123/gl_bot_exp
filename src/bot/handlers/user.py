@@ -35,11 +35,28 @@ def register_user_handlers(bot: telebot.TeleBot):
     def back_to_main(message):
         bot.send_message(message.chat.id, "🏠 Главное меню", reply_markup=keyboards.get_main_menu(message.from_user.id))
 
-    @bot.message_handler(content_types=['photo', 'text'])
+    @bot.message_handler(content_types=['photo', 'text', 'document'])
     def handle_media(message):
         user_id = message.from_user.id
         if not database.get_user(user_id):
             return 
+
+        # Обработка документа (мода) через Reply
+        if message.content_type == 'document':
+            if message.reply_to_message:
+                target_id = message.reply_to_message.message_id
+                if target_id in user_drafts:
+                    user_drafts[target_id]['document'] = message.document.file_id
+                    bot.reply_to(message, "✅ <b>Файл прикреплен к посту!</b> Теперь нажми 'Опубликовать'.", parse_mode='HTML')
+                    return
+            
+            # Если это не реплай, возможно пользователь просто хочет вотермарк (если это PNG)
+            if message.document.mime_type == 'image/png':
+                show_watermark_menu(bot, message.chat.id, user_id)
+                return
+            else:
+                bot.send_message(message.chat.id, "Чтобы прикрепить файл к посту, отправь его <b>ответом (Reply)</b> на превью поста.", parse_mode='HTML')
+                return
 
         if message.media_group_id:
             if message.media_group_id not in album_cache:
