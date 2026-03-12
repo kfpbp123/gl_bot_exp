@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+user_data/
+bot_data.db
+.env
+.gemini/
+*.log
