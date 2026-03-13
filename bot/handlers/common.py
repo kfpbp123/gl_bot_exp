@@ -5,7 +5,7 @@ from datetime import datetime
 from aiogram import Router, types, F, Bot
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from database.repositories import UserRepository, PostRepository, ChannelRepository
+from database.repositories import UserRepository, PostRepository, ChannelRepository, CommentRepository
 from bot.keyboards.main_menu import get_main_menu, get_lang_keyboard, get_cancel_markup
 from bot.states.post import AdminStates
 from utils.localizer import t
