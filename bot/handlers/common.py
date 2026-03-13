@@ -2,6 +2,7 @@
 from aiogram import Router, types
 from aiogram.filters import Command
 from database.repositories import UserRepository
+from bot.keyboards.main_menu import get_main_menu
 
 router = Router()
 
@@ -16,6 +17,7 @@ async def cmd_start(message: types.Message, user_repo: UserRepository):
     
     await message.answer(
         f"Привет, {message.from_user.full_name}! 🚀\n\n"
-        "Я — твоя SaaS платформа для автопостинга.\n"
-        "Напиши /create, чтобы начать создавать контент с помощью ИИ."
+        "Я — твоя SaaS платформа для автопостинга про Minecraft моды.\n"
+        "Нажми кнопку ниже или напиши /create, чтобы начать.",
+        reply_markup=get_main_menu()
     )

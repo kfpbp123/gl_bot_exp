@@ -12,6 +12,7 @@ import os
 router = Router()
 
 @router.message(Command("create"))
+@router.message(F.text == "📝 Создать пост")
 async def start_draft(message: types.Message, state: FSMContext):
     """Начало процесса создания поста"""
     await state.set_state(PostDraftStates.waiting_for_topic)
@@ -24,12 +25,11 @@ async def process_topic(message: types.Message, state: FSMContext):
     await state.update_data(topic=topic)
     
     # Информируем пользователя о начале работы ИИ
-    sent_msg = await message.answer("⌛ ИИ генерирует текст, пожалуйста, подождите...")
+    sent_msg = await message.answer("⌛ ИИ генерирует текст про Minecraft мод, пожалуйста, подождите...")
     await state.set_state(PostDraftStates.waiting_for_generation)
 
     # Вызываем асинхронный ИИ-сервис
-    prompt = f"Напиши интересный и вовлекающий пост для Telegram на тему: {topic}. Используй эмодзи и структурируй текст."
-    generated_text = await ai_service.generate_post(prompt=prompt)
+    generated_text = await ai_service.generate_post(topic)
 
     if not generated_text:
         await sent_msg.edit_text("❌ Ошибка при генерации текста. Попробуйте еще раз.")

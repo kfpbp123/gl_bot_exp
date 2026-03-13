@@ -1,38 +1,58 @@
 # services/ai_service.py
 import google.generativeai as genai
-from google.generativeai.types import GenerateContentResponse
 from core.config import settings
 from core.logging import logger
+import re
 
 class AIService:
     def __init__(self):
-        # Инициализируем Gemini API через конфиг
         genai.configure(api_key=settings.GEMINI_API_KEY.get_secret_value())
-        self.model = genai.GenerativeModel('gemini-pro')
+        # Используем актуальную модель 1.5-flash
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
         self._logger = logger.bind(service="AIService")
-
-    async def generate_post(self, prompt: str, context: str | None = None) -> str | None:
-        """
-        Асинхронная генерация текста поста.
-        """
-        full_prompt = f"Контекст: {context}\n\nЗадание: {prompt}" if context else prompt
         
+        # Инструкции из вашего исходного плана
+        self.system_prompt = """Ты — креативный редактор Telegram-канала о модах для Minecraft.
+Я передам тебе текст или тему. Вычлени главное и напиши пост. Уложись в 800 символов.
+Используй тег <blockquote expandable> для основного блока. Пиши в драйвовом и геймерском стиле.
+
+Формат:
+📦 <b>[Название]</b>
+
+<blockquote expandable><b>Что это такое?</b>
+[Описание]
+
+<b>Главные фишки:</b>
+• [Фишка 1]
+• [Фишка 2]
+
+🎮 Версия: [Версия]</blockquote>
+
+<blockquote>💖 - Имба
+💔 - Не оч</blockquote>
+
+#Minecraft #[Категория]
+
+ПРАВИЛА:
+1. Выбери строго ОДНУ категорию: #Моды, #Карты, #Текстуры или #Шейдеры.
+2. В конце ровно ДВА хэштега: #Minecraft и категория.
+3. ЗАПРЕЩЕНО писать название мода в виде хэштега!
+"""
+
+    async def generate_post(self, topic: str) -> str | None:
         try:
-            self._logger.info("generating_post", prompt_len=len(full_prompt))
+            self._logger.info("generating_post", topic=topic)
             
-            # Официальный асинхронный метод Gemini
-            response: GenerateContentResponse = await self.model.generate_content_async(
-                full_prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.7,
-                    top_p=0.9,
-                    max_output_tokens=1024,
-                )
-            )
+            prompt = f"{self.system_prompt}\n\nТема/Текст от пользователя: {topic}"
+            
+            # Асинхронная генерация
+            response = await self.model.generate_content_async(prompt)
             
             if response.text:
-                self._logger.info("post_generated_successfully")
-                return response.text
+                text = response.text.strip()
+                # Конвертируем Markdown-звездочки в HTML (aiogram любит <b>)
+                text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+                return text
             
             return None
 
@@ -40,5 +60,4 @@ class AIService:
             self._logger.error("ai_generation_failed", error=str(e))
             return None
 
-# Экспортируем синглтон
 ai_service = AIService()
