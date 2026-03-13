@@ -7,9 +7,8 @@ import asyncio
 
 class AIService:
     def __init__(self):
-        # Используем genai для настройки
         genai.configure(api_key=settings.GEMINI_API_KEY.get_secret_value())
-        # Используем проверенную модель
+        # Используем flash 1.5 - она самая стабильная для таких задач
         self.model = genai.GenerativeModel('gemini-1.5-flash')
         self._logger = logger.bind(service="AIService")
         
@@ -43,23 +42,40 @@ class AIService:
         try:
             self._logger.info("generating_post", topic=topic)
             
-            # Если запрос слишком короткий, просим ИИ придумать что-то креативное про майнкрафт
-            full_prompt = f"{self.system_prompt}\n\nТема: {topic}\n\nВАЖНО: Если тема слишком короткая или непонятная, придумай описание для случайного популярного мода для Minecraft и оформи его."
+            # Улучшенный промпт для коротких запросов
+            full_prompt = f"{self.system_prompt}\n\nТема от пользователя: {topic}\n\nЗАДАНИЕ: Напиши полноценный пост про любой интересный Minecraft мод, даже если тема выше слишком короткая."
             
             loop = asyncio.get_event_loop()
+            
             def sync_generate():
-                response = self.model.generate_content(full_prompt)
-                try:
-                    return response.text if response and response.text else None
-                except Exception as e:
-                    self._logger.error("ai_safety_block_or_error", error=str(e))
+                # Настройка безопасности (отключаем блокировку на простые слова)
+                safety_settings = [
+                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+                ]
+                
+                response = self.model.generate_content(
+                    full_prompt,
+                    safety_settings=safety_settings
+                )
+                
+                if not response.candidates:
                     return None
+                    
+                try:
+                    return response.text
+                except Exception:
+                    # Если текст заблокирован фильтрами, возвращаем текст из первой части (если есть)
+                    return response.candidates[0].content.parts[0].text if response.candidates[0].content.parts else None
 
             generated_text = await loop.run_in_executor(None, sync_generate)
             
             if generated_text:
-                # Очистка от markdown-мусора
                 text = generated_text.strip()
+                # Убираем возможные артефакты Markdown
+                text = text.replace("```html", "").replace("```", "")
                 text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
                 return text
             
