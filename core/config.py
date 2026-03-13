@@ -77,7 +77,7 @@ class Settings(BaseSettings):
         return ["@lazikosmods"]
     
     # Path Settings
-    WATERMARK_PATH: str = "assets/watermark.png"
+    WATERMARK_PATH: str = "logo.png"
     
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env" if (BASE_DIR / ".env").exists() else None,

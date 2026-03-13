@@ -26,3 +26,4 @@ pillow>=10.2.0
 
 # --- Utilities ---
 pydantic>=2.6.3
+pytz>=2024.1
