@@ -50,7 +50,11 @@ async def main():
     dp.include_router(common.router)
     dp.include_router(posts.router)
 
-    # 6. Запуск бота
+    # 6. Запуск шедулера (в фоне)
+    from bot.scheduler import scheduler_loop
+    asyncio.create_task(scheduler_loop(bot))
+
+    # 7. Запуск бота
     me = await bot.get_me()
     logger.info("bot_started", username=me.username)
     

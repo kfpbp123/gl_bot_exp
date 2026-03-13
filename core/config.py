@@ -59,6 +59,19 @@ class Settings(BaseSettings):
     # AI Settings
     GEMINI_API_KEY: SecretStr = Field(validation_alias=AliasChoices('GEMINI_API_KEY', 'GEMINI_KEY'))
     
+    # Scheduling Settings
+    SMART_QUEUE_INTERVAL_HOURS: int = 8
+    
+    # Channel Settings
+    CHANNELS: List[str] = ["@lazikosmods"]
+    
+    @field_validator("CHANNELS", mode="before")
+    @classmethod
+    def parse_channels(cls, v: Any) -> List[str]:
+        if isinstance(v, str):
+            return [ch.strip() for ch in v.split(",") if ch.strip()]
+        return v
+    
     # Path Settings
     WATERMARK_PATH: str = "assets/watermark.png"
     

@@ -12,6 +12,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     username: Mapped[str | None] = mapped_column(String(64))
     language: Mapped[str] = mapped_column(String(5), default="ru")
+    active_channel: Mapped[str | None] = mapped_column(String(128))
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -35,8 +36,18 @@ class Post(Base):
     channel_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("channels.id"))
     
     text: Mapped[str | None] = mapped_column(Text)
-    media_url: Mapped[str | None] = mapped_column(String(512))
+    media_url: Mapped[str | None] = mapped_column(String(512)) # photo_id or comma-separated photo_ids
+    document_id: Mapped[str | None] = mapped_column(String(512))
     status: Mapped[str] = mapped_column(String(20), default="draft")
     
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_name: Mapped[str | None] = mapped_column(String(128))
+    text: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+

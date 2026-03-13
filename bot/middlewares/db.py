@@ -3,7 +3,7 @@ from typing import Any, Awaitable, Callable, Dict
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject
 from sqlalchemy.ext.asyncio import async_sessionmaker
-from database.repositories import UserRepository, PostRepository
+from database.repositories import UserRepository, PostRepository, CommentRepository
 
 class DbSessionMiddleware(BaseMiddleware):
     def __init__(self, session_pool: async_sessionmaker):
@@ -20,6 +20,7 @@ class DbSessionMiddleware(BaseMiddleware):
             # Инъекция репозиториев в хэндлер
             data["user_repo"] = UserRepository(session)
             data["post_repo"] = PostRepository(session)
+            data["comment_repo"] = CommentRepository(session)
             data["db_session"] = session
             
             return await handler(event, data)
