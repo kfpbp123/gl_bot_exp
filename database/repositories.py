@@ -16,16 +16,17 @@ class UserRepository(BaseRepository):
         result = await self.session.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
 
-    async def upsert_user(self, user_id: int, username: str | None = None, language: str = "ru"):
+    async def upsert_user(self, user_id: int, username: str | None = None, language: str = "ru", active_channel: str | None = None):
         """Создает или обновляет пользователя"""
         # Сначала проверяем существование
         user = await self.get_user(user_id)
         if not user:
-            user = User(id=user_id, username=username, language=language)
+            user = User(id=user_id, username=username, language=language, active_channel=active_channel)
             self.session.add(user)
         else:
             if username: user.username = username
             if language: user.language = language
+            if active_channel: user.active_channel = active_channel
         
         await self.session.commit()
         return user

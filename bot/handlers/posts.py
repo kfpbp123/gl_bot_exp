@@ -7,7 +7,7 @@ from typing import List, Dict
 from aiogram import Router, types, F, Bot
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import InputMediaPhoto, FSInputFile
+from aiogram.types import InputMediaPhoto, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton
 
 from bot.states.post import PostDraftStates
 from bot.keyboards.main_menu import get_draft_markup, get_main_menu, get_cancel_markup
@@ -148,16 +148,18 @@ async def process_media_group(mg_id: str, chat_id: int, user_id: int, state: FSM
 
 # Обработка действий в меню черновика
 @router.callback_query(F.data == "pub_now")
-async def process_pub_now(callback: types.CallbackQuery, state: FSMContext, post_repo: PostRepository, bot: Bot):
+async def process_pub_now(callback: types.CallbackQuery, state: FSMContext, post_repo: PostRepository, user_repo: UserRepository, bot: Bot):
     data = await state.get_data()
     text = data.get("draft_text")
     photo = data.get("draft_photo")
-    lang = await get_user_lang(callback.from_user.id, post_repo) # UserRepository is also BaseRepository
+    lang = await get_user_lang(callback.from_user.id, user_repo)
     
     # В реальном боте мы бы отправляли в канал. Здесь пока просто помечаем и имитируем.
     # Но по заданию "перенести функционал", значит надо реализовать отправку.
     
-    channel = settings.CHANNELS[0] # По умолчанию берем первый
+    user = await user_repo.get_user(callback.from_user.id)
+    channel = user.active_channel if user and user.active_channel else settings.CHANNELS[0]
+    
     try:
         if photo:
             if "," in photo: # Альбом
@@ -171,17 +173,17 @@ async def process_pub_now(callback: types.CallbackQuery, state: FSMContext, post
             await bot.send_message(channel, text, parse_mode="HTML")
             
         await post_repo.create_post(callback.from_user.id, text, media_url=photo, channel_id=None) # TODO: channel_id
-        await callback.message.answer("✅ Опубликовано в " + channel)
+        await callback.message.answer("✅ Опубликовано в " + str(channel))
         await callback.message.delete()
     except Exception as e:
         await callback.answer(f"Ошибка: {e}", show_alert=True)
 
 @router.callback_query(F.data == "add_to_smart_q")
-async def process_smart_queue(callback: types.CallbackQuery, state: FSMContext, post_repo: PostRepository):
+async def process_smart_queue(callback: types.CallbackQuery, state: FSMContext, post_repo: PostRepository, user_repo: UserRepository):
     data = await state.get_data()
     text = data.get("draft_text")
     photo = data.get("draft_photo")
-    lang = await get_user_lang(callback.from_user.id, post_repo)
+    lang = await get_user_lang(callback.from_user.id, user_repo)
     
     last_time = await post_repo.get_last_scheduled_time()
     if not last_time or last_time < datetime.utcnow():
@@ -202,7 +204,8 @@ async def process_cancel_draft(callback: types.CallbackQuery, state: FSMContext)
     await callback.answer("Удалено")
 
 @router.callback_query(F.data == "rewrite_menu")
-async def process_rewrite_menu(callback: types.CallbackQuery, lang: str = "ru"):
+async def process_rewrite_menu(callback: types.CallbackQuery, user_repo: UserRepository):
+    lang = await get_user_lang(callback.from_user.id, user_repo)
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(text="⚡️ Короче", callback_data="rewrite_short")],
         [types.InlineKeyboardButton(text="🎉 Веселее", callback_data="rewrite_fun")],
