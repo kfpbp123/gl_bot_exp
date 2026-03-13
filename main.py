@@ -12,12 +12,34 @@ async def main():
     # 1. Настройка логирования
     setup_logging()
     
-    # 2. Инициализация Redis (используется для FSM)
-    # redis://localhost:6379/0
-    redis = Redis.from_url(str(settings.REDIS_URL))
-    storage = RedisStorage(redis)
+    # 2. Инициализация БД (автоматическое создание таблиц)
+    from database.models import Base
+    from database.session import engine
+    logger.info("initializing_database")
+    try:
+        async with engine.begin() as conn:
+            # Создаем таблицы, если их нет
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("database_initialized_successfully")
+    except Exception as e:
+        logger.error("database_initialization_failed", error=str(e))
+        # Не останавливаем бота, но логируем критическую ошибку
+    
+    # 3. Инициализация Redis (используется для FSM)
+    try:
+        redis = Redis.from_url(str(settings.REDIS_URL))
+        # Проверяем соединение
+        await redis.ping()
+        storage = RedisStorage(redis)
+        logger.info("redis_connected_successfully")
+    except Exception as e:
+        logger.error("redis_connection_failed", error=str(e))
+        # Если Redis недоступен, можно откатиться на MemoryStorage (опционально)
+        from aiogram.fsm.storage.memory import MemoryStorage
+        storage = MemoryStorage()
+        logger.warning("using_memory_storage_as_fallback")
 
-    # 3. Настройка бота и диспетчера
+    # 4. Настройка бота и диспетчера
     bot = Bot(token=settings.BOT_TOKEN.get_secret_value())
     dp = Dispatcher(storage=storage)
 
