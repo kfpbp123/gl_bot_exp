@@ -28,6 +28,13 @@ async def cmd_start(message: types.Message, user_repo: UserRepository):
             reply_markup=get_main_menu(lang)
         )
 
+@router.message(Command("lang"))
+async def cmd_lang(message: types.Message):
+    await message.answer(
+        "🌍 Выберите язык / Tilni tanlang:", 
+        reply_markup=get_lang_keyboard()
+    )
+
 @router.callback_query(F.data.startswith("set_lang_"))
 async def process_set_lang(callback: types.CallbackQuery, user_repo: UserRepository):
     lang = callback.data.split("_")[2]

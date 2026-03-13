@@ -24,7 +24,10 @@ class UserRepository(BaseRepository):
             language=language
         ).on_conflict_do_update(
             index_elements=[User.id],
-            set_={"username": username}
+            set_={
+                "username": username,
+                "language": language
+            }
         )
         await self.session.execute(stmt)
         await self.session.commit()

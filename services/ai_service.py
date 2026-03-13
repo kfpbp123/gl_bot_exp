@@ -43,13 +43,17 @@ class AIService:
         try:
             self._logger.info("generating_post", topic=topic)
             
-            # В aiogram 3 асинхронность критична
-            # Используем to_thread если метод блокирующий, или встроенный async
-            loop = asyncio.get_event_loop()
+            # Если запрос слишком короткий, просим ИИ придумать что-то креативное про майнкрафт
+            full_prompt = f"{self.system_prompt}\n\nТема: {topic}\n\nВАЖНО: Если тема слишком короткая или непонятная, придумай описание для случайного популярного мода для Minecraft и оформи его."
             
+            loop = asyncio.get_event_loop()
             def sync_generate():
-                response = self.model.generate_content(f"{self.system_prompt}\n\nТема: {topic}")
-                return response.text if response else None
+                response = self.model.generate_content(full_prompt)
+                try:
+                    return response.text if response and response.text else None
+                except Exception as e:
+                    self._logger.error("ai_safety_block_or_error", error=str(e))
+                    return None
 
             generated_text = await loop.run_in_executor(None, sync_generate)
             
