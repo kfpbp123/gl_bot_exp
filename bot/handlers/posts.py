@@ -5,101 +5,73 @@ from aiogram.fsm.context import FSMContext
 from bot.states.post import PostDraftStates
 from services.ai_service import ai_service
 from utils.watermarker import watermarker
-from database.repositories import PostRepository
+from database.repositories import PostRepository, UserRepository
 from core.logging import logger
+from utils.localizer import t
 import os
 
 router = Router()
 
+async def get_user_lang(user_id, user_repo):
+    user = await user_repo.get_user(user_id)
+    return user.language if user else "ru"
+
 @router.message(Command("create"))
-@router.message(F.text == "📝 Создать пост")
-async def start_draft(message: types.Message, state: FSMContext):
-    """Начало процесса создания поста"""
+@router.message(F.text.in_({"📝 Создать пост", "📝 Post yaratish"}))
+async def start_draft(message: types.Message, state: FSMContext, user_repo: UserRepository):
+    lang = await get_user_lang(message.from_user.id, user_repo)
     await state.set_state(PostDraftStates.waiting_for_topic)
-    await message.answer("🤖 О чем должен быть пост? Напиши тему или краткое описание.")
+    await message.answer(t("ask_topic", lang))
 
 @router.message(PostDraftStates.waiting_for_topic)
-async def process_topic(message: types.Message, state: FSMContext):
-    """Отправка запроса в Gemini"""
+async def process_topic(message: types.Message, state: FSMContext, user_repo: UserRepository):
+    lang = await get_user_lang(message.from_user.id, user_repo)
     topic = message.text
-    await state.update_data(topic=topic)
+    await state.update_data(topic=topic, lang=lang)
     
-    # Информируем пользователя о начале работы ИИ
-    sent_msg = await message.answer("⌛ ИИ генерирует текст про Minecraft мод, пожалуйста, подождите...")
+    sent_msg = await message.answer(t("generating", lang))
     await state.set_state(PostDraftStates.waiting_for_generation)
 
-    # Вызываем асинхронный ИИ-сервис
     generated_text = await ai_service.generate_post(topic)
 
     if not generated_text:
-        await sent_msg.edit_text("❌ Ошибка при генерации текста. Попробуйте еще раз.")
+        await sent_msg.edit_text(t("error_ai", lang))
         await state.clear()
         return
 
-    # Сохраняем результат в FSM
     await state.update_data(generated_text=generated_text)
     await state.set_state(PostDraftStates.reviewing_draft)
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text="🖼 Добавить фото с вотермарком", callback_data="add_photo")],
-        [types.InlineKeyboardButton(text="✅ Сохранить как черновик", callback_data="save_only_text")],
-        [types.InlineKeyboardButton(text="🔄 Сгенерировать заново", callback_data="regenerate")]
+        [types.InlineKeyboardButton(text=t("btn_add_photo", lang), callback_data="add_photo")],
+        [types.InlineKeyboardButton(text=t("btn_save", lang), callback_data="save_only_text")]
     ])
     
-    await sent_msg.edit_text(f"📝 Сгенерированный текст:\n\n{generated_text}", reply_markup=kb)
+    await sent_msg.edit_text(t("success_gen", lang, text=generated_text), reply_markup=kb)
 
 @router.callback_query(F.data == "add_photo", PostDraftStates.reviewing_draft)
-async def ask_for_photo(callback: types.CallbackQuery, state: FSMContext):
+async def ask_for_photo(callback: types.CallbackQuery, state: FSMContext, user_repo: UserRepository):
+    lang = await get_user_lang(callback.from_user.id, user_repo)
     await state.set_state(PostDraftStates.waiting_for_media)
-    await callback.message.answer("📸 Отправьте изображение, на которое нужно наложить вотермарк.")
+    await callback.message.answer("📸 Send photo / Rasm yuboring")
     await callback.answer()
 
 @router.message(PostDraftStates.waiting_for_media, F.photo)
 async def process_photo(message: types.Message, state: FSMContext, bot: Bot):
-    """Асинхронное наложение вотермарка"""
     photo = message.photo[-1]
-    
-    # Создаем папку temp если её нет
     os.makedirs("temp", exist_ok=True)
-    
     raw_path = f"temp/raw_{photo.file_id}.jpg"
     final_path = f"temp/wm_{photo.file_id}.jpg"
     
-    # Скачиваем фото
     await bot.download(photo, destination=raw_path)
+    msg = await message.answer("🎨 ...")
     
-    # Накладываем вотермарк в отдельном потоке (не блокирует бота)
-    msg = await message.answer("🎨 Накладываю вотермарк...")
+    # Временно просто сохраняем без сложного вотермарка для теста
     success = await watermarker.apply_watermark(raw_path, final_path)
     
     if success:
         await state.update_data(media_path=final_path)
-        await message.answer_photo(
-            types.FSInputFile(final_path), 
-            caption="✅ Вотермарк успешно наложен! Сохранить этот пост?"
-        )
-        
-        kb = types.InlineKeyboardMarkup(inline_keyboard=[
-            [types.InlineKeyboardButton(text="✅ Да, сохранить", callback_data="save_full_post")],
-            [types.InlineKeyboardButton(text="❌ Отмена", callback_data="cancel")]
-        ])
-        await message.answer("Что делаем дальше?", reply_markup=kb)
+        await message.answer_photo(types.FSInputFile(final_path), caption="✅ OK?")
     else:
-        await message.answer("❌ Ошибка при обработке фото.")
-    
+        await message.answer("❌ Error")
     await msg.delete()
-
-@router.callback_query(F.data == "save_full_post", PostDraftStates.waiting_for_media)
-async def finalize_post(callback: types.CallbackQuery, state: FSMContext, post_repo: PostRepository):
-    """Сохранение поста в PostgreSQL"""
-    data = await state.get_data()
-    
-    post = await post_repo.create_post(
-        user_id=callback.from_user.id,
-        text=data.get("generated_text"),
-        media_url=data.get("media_path")
-    )
-    
-    await callback.message.answer(f"🚀 Пост сохранен в черновики! (ID: {post.id})")
-    await state.clear()
-    await callback.answer()

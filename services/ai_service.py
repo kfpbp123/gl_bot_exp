@@ -3,18 +3,19 @@ import google.generativeai as genai
 from core.config import settings
 from core.logging import logger
 import re
+import asyncio
 
 class AIService:
     def __init__(self):
+        # Используем genai для настройки
         genai.configure(api_key=settings.GEMINI_API_KEY.get_secret_value())
-        # Используем актуальную модель 1.5-flash
+        # Используем проверенную модель
         self.model = genai.GenerativeModel('gemini-1.5-flash')
         self._logger = logger.bind(service="AIService")
         
-        # Инструкции из вашего исходного плана
         self.system_prompt = """Ты — креативный редактор Telegram-канала о модах для Minecraft.
-Я передам тебе текст или тему. Вычлени главное и напиши пост. Уложись в 800 символов.
-Используй тег <blockquote expandable> для основного блока. Пиши в драйвовом и геймерском стиле.
+Вычлени главное и напиши пост. Уложись в 800 символов.
+Используй тег <blockquote expandable> для основного блока.
 
 Формат:
 📦 <b>[Название]</b>
@@ -36,21 +37,25 @@ class AIService:
 ПРАВИЛА:
 1. Выбери строго ОДНУ категорию: #Моды, #Карты, #Текстуры или #Шейдеры.
 2. В конце ровно ДВА хэштега: #Minecraft и категория.
-3. ЗАПРЕЩЕНО писать название мода в виде хэштега!
 """
 
     async def generate_post(self, topic: str) -> str | None:
         try:
             self._logger.info("generating_post", topic=topic)
             
-            prompt = f"{self.system_prompt}\n\nТема/Текст от пользователя: {topic}"
+            # В aiogram 3 асинхронность критична
+            # Используем to_thread если метод блокирующий, или встроенный async
+            loop = asyncio.get_event_loop()
             
-            # Асинхронная генерация
-            response = await self.model.generate_content_async(prompt)
+            def sync_generate():
+                response = self.model.generate_content(f"{self.system_prompt}\n\nТема: {topic}")
+                return response.text if response else None
+
+            generated_text = await loop.run_in_executor(None, sync_generate)
             
-            if response.text:
-                text = response.text.strip()
-                # Конвертируем Markdown-звездочки в HTML (aiogram любит <b>)
+            if generated_text:
+                # Очистка от markdown-мусора
+                text = generated_text.strip()
                 text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
                 return text
             
