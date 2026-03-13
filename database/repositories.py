@@ -2,7 +2,7 @@
 from sqlalchemy import select, update, delete, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
-from database.models import User, Channel, Post
+from database.models import User, Channel, Post, Comment
 from core.logging import logger
 from datetime import datetime, timedelta
 
