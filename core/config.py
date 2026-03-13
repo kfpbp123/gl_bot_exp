@@ -1,23 +1,16 @@
 # core/config.py
-import os
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import SecretStr, PostgresDsn, RedisDsn
-from typing import List
-from pathlib import Path
-
-# Определяем путь к .env относительно этого файла
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-from pydantic import SecretStr, PostgresDsn, RedisDsn, field_validator, AliasChoices, Field
-from typing import List, Union, Any
-from pathlib import Path
 import json
+from pathlib import Path
+from typing import List, Union, Any
+
+from pydantic import SecretStr, PostgresDsn, RedisDsn, Field, AliasChoices, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Определяем путь к .env относительно этого файла
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 class Settings(BaseSettings):
-    # Bot Settings (поддерживаем оба названия: новое и старое)
+    # Bot Settings
     BOT_TOKEN: SecretStr = Field(validation_alias=AliasChoices('BOT_TOKEN', 'TELEGRAM_TOKEN'))
     
     # Обработка ADMIN_IDS (принимает число, строку или список)
@@ -30,11 +23,9 @@ class Settings(BaseSettings):
             return [v]
         if isinstance(v, str):
             try:
-                # Пробуем распарсить как JSON список [123, 456]
                 data = json.loads(v)
                 return data if isinstance(data, list) else [int(data)]
             except:
-                # Если не JSON, пробуем как строку через запятую "123,456"
                 return [int(i.strip()) for i in v.split(",") if i.strip().isdigit()]
         return v
     
@@ -45,11 +36,9 @@ class Settings(BaseSettings):
     @classmethod
     def fix_database_url(cls, v: Any) -> str:
         if isinstance(v, str):
-            # Заменяем postgres:// на postgresql:// (для совместимости)
             if v.startswith("postgres://"):
                 v = v.replace("postgres://", "postgresql://", 1)
-            # Добавляем +asyncpg если его нет
-            if v.startswith("postgresql://"):
+            if v.startswith("postgresql://") and "+asyncpg" not in v:
                 v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
         return v
     
@@ -69,6 +58,11 @@ class Settings(BaseSettings):
     @classmethod
     def parse_channels(cls, v: Any) -> List[str]:
         if isinstance(v, str):
+            if v.startswith("["):
+                try:
+                    return json.loads(v)
+                except:
+                    pass
             return [ch.strip() for ch in v.split(",") if ch.strip()]
         return v
     
